@@ -4,22 +4,23 @@ use serde::{Serialize, Deserialize};
 pub trait Token: Eq + Hash + Serialize + Deserialize<'static> {
 }
 
-pub trait Locator: Eq + Hash + Serialize + Deserialize<'static> {
+pub trait Locator: Eq + Hash {
 }
 
-pub trait LimiterCondition {
+pub trait Cond {
     type Req;
     type Res;
+    type ResErr;
+    type ReqCtx;
 
-    fn pre_cond(&mut self, req: &Self::Req) -> bool;
-
-    fn post_cond(&mut self, res: &Self::Res) -> bool;
+    fn pre(&mut self, req: &Self::Req) -> Option<Self::ReqCtx>;
+    fn post(&mut self, res: Result<&Self::Res, &Self::ResErr>, ctx: Self::ReqCtx) -> bool;
 }
 
-pub trait Limiter {
-    type Locator: Locator;
-    type ToTokens: ToTokens<Self::Locator>;
-    type Condition: LimiterCondition;
+pub struct Limiter<Locator, Token, Req, Res, ResErr, ReqCtx> {
+    to_tokens: Box<dyn ToTokens<Locator, Token = Token>>,
+    max: usize,
+    cond: Box<dyn Cond<Req = Req, Res = Res, ResErr = ResErr, ReqCtx = ReqCtx>>,
 }
 
 pub trait ToTokens<Loc> {
